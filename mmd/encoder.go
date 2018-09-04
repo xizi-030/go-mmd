@@ -163,6 +163,9 @@ func getStructInfo(st reflect.Type) *structInfo {
 			n = f.Tag.Get("json")
 		}
 		if n != "" {
+			if n == "-" {
+				continue
+			}
 			parts := strings.Split(n, ",")
 			if parts[0] != "" {
 				fi.key = parts[0]

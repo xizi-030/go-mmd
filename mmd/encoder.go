@@ -163,6 +163,9 @@ func getStructInfo(st reflect.Type) *structInfo {
 			n = f.Tag.Get("json")
 		}
 		if n != "" {
+			if n == "-" {
+				continue
+			}
 			parts := strings.Split(n, ",")
 			if parts[0] != "" {
 				fi.key = parts[0]
@@ -241,7 +244,11 @@ func reflectEncode(thing interface{}, buffer *Buffer) error {
 		buffer.WriteByte('r')
 		buffer.WriteByte(0x04)
 		si := getStructInfo(val.Type())
-		sz := buffer.GetWritable(4)
+
+		// Store the absolute position since buffer can resize and reserve space to add size later
+		sz_pos := buffer.GetPos()
+		buffer.GetWritable(4)
+
 		count := 0
 		for _, f := range si.fields {
 			fv := fieldByIndex(val, f.num)
@@ -260,7 +267,11 @@ func reflectEncode(thing interface{}, buffer *Buffer) error {
 
 		}
 		if count > 0 {
-			buffer.order.PutUint32(sz, uint32(count))
+			// Fill in size at the reserved space
+			cur_pos := buffer.GetPos()
+			buffer.Position(sz_pos)
+			buffer.order.PutUint32(buffer.GetWritable(4), uint32(count))
+			buffer.Position(cur_pos)
 		} else {
 			buffer.Position(start)
 			buffer.WriteByte('N')

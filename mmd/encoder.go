@@ -245,8 +245,9 @@ func reflectEncode(thing interface{}, buffer *Buffer) error {
 		buffer.WriteByte(0x04)
 		si := getStructInfo(val.Type())
 
+		// Store the absolute position since buffer can resize and reserve space to add size later
 		sz_pos := buffer.GetPos()
-		buffer.GetWritable(4) // Reserve space for size
+		buffer.GetWritable(4)
 
 		count := 0
 		for _, f := range si.fields {
@@ -266,6 +267,7 @@ func reflectEncode(thing interface{}, buffer *Buffer) error {
 
 		}
 		if count > 0 {
+			// Fill in size at the reserved space
 			cur_pos := buffer.GetPos()
 			buffer.Position(sz_pos)
 			buffer.order.PutUint32(buffer.GetWritable(4), uint32(count))

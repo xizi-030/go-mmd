@@ -279,11 +279,11 @@ func (c *Conn) writeOnSocket(data []byte) error {
 
 	_, err := c.socket.Write(fsz)
 	if err != nil {
-		return fmt.Errorf("Failed to write header:", fsz, err)
+		return fmt.Errorf("Failed to write header: %s %s", fsz, err)
 	} else {
 		_, err = c.socket.Write(data)
 		if err != nil {
-			return fmt.Errorf("Failed to write data", err)
+			return fmt.Errorf("Failed to write data: %s", err)
 		}
 	}
 

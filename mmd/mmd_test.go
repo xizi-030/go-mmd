@@ -27,5 +27,5 @@ func TestEchoCall(t *testing.T) {
 	resp, err := mmdc.Call("echo", "Howdy Doody")
 	t.Logf("Response: %+v\nError: %v\n", resp, err)
 	t.Log("Shutting down MMD connection")
-	mmdc.Close()
+	mmdc.close()
 }

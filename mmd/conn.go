@@ -295,7 +295,7 @@ func reader(c *Conn) {
 	buff := make([]byte, 256)
 	defer c.onDisconnect()
 	for {
-		num, err := c.socket.Read(fszb)
+		num, err := io.ReadFull(c.socket, fszb)
 		if err != nil {
 			if err == io.EOF {
 				return

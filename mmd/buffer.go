@@ -126,7 +126,7 @@ func (b *Buffer) advance(sz int) int {
 func (b *Buffer) ensureSpace(sz int) {
 	need := b.index + sz
 	for cap(b.data) <= need {
-	    b.doubleCapacity()
+		b.doubleCapacity()
 	}
 }
 

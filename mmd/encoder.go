@@ -283,7 +283,7 @@ func reflectEncode(thing interface{}, buffer *Buffer) error {
 		return encodeUint(buffer, val.Uint())
 	case reflect.String:
 		return Encode(buffer, val.String())
-	case reflect.Slice:
+	case reflect.Slice, reflect.Array:
 		buffer.WriteByte('a')
 		buffer.WriteByte(0x04)
 		buffer.order.PutUint32(buffer.GetWritable(4), uint32(val.Len()))

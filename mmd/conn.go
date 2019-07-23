@@ -105,7 +105,6 @@ func Call(service string, body interface{}) (interface{}, error) {
 	return lc.Call(service, body)
 }
 
-
 // Creates a default URL connection (-mmd to override)
 func Connect() (*Conn, error) {
 	return ConnectTo(mmdUrl)
@@ -127,9 +126,7 @@ func ConnectWithRetry(url string, reconnectInterval time.Duration, onConnect OnC
 	return cfg.Connect()
 }
 
-
 // internal to package --
-
 
 func (c *Conn) startReader() {
 	go reader(c)

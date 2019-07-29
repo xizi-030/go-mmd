@@ -198,6 +198,10 @@ func (c *Conn) createSocketConnection(isRetryConnection bool) error {
 				_, err = c.Call("$mmd", map[string]interface{}{"extraTheirTags": c.config.ExtraTheirTags})
 				if err != nil {
 					log.Printf("Failed to set extraTheirTags: %v\n", err)
+
+					c.socket.Close()
+					c.socket = nil
+
 					if c.config.AutoRetry {
 						log.Printf("Retrying connect in %.2f seconds\n", c.config.ReconnectInterval.Seconds())
 						time.Sleep(c.config.ReconnectInterval)

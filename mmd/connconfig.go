@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -19,6 +20,8 @@ type ConnConfig struct {
 	ReconnectInterval time.Duration
 	ReconnectDelay    time.Duration
 	OnConnect         OnConnection
+	ExtraMyTags       []string
+	ExtraTheirTags    []string
 }
 
 func NewConnConfig(url string) *ConnConfig {
@@ -30,6 +33,8 @@ func NewConnConfig(url string) *ConnConfig {
 		AutoRetry:         false,
 		ReconnectInterval: reconnectInterval,
 		ReconnectDelay:    reconnectDelay,
+		ExtraMyTags:       findExtraTags("MMD_EXTRA_MY_TAGS"),
+		ExtraTheirTags:    findExtraTags("MMD_EXTRA_THEIR_TAGS"),
 	}
 }
 
@@ -51,4 +56,17 @@ func _create_connection(cfg *ConnConfig) (*Conn, error) {
 	}
 
 	return mmdc, err
+}
+
+func findExtraTags(envVar string) []string {
+	extraTagsEnv := strings.TrimSpace(os.Getenv(envVar))
+	if len(extraTagsEnv) == 0 {
+		return []string{}
+	} else {
+		extraTags := make([]string, 0)
+		for _, tag := range strings.Split(extraTagsEnv, ",") {
+			extraTags = append(extraTags, tag)
+		}
+		return extraTags
+	}
 }

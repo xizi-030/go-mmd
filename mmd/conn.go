@@ -194,24 +194,6 @@ func (c *Conn) createSocketConnection(isRetryConnection bool) error {
 			conn.SetReadBuffer(c.config.ReadSz)
 			c.socket = conn
 
-			if len(c.config.ExtraTheirTags) > 0 {
-				_, err = c.Call("$mmd", map[string]interface{}{"extraTheirTags": c.config.ExtraTheirTags})
-				if err != nil {
-					log.Printf("Failed to set extraTheirTags: %v\n", err)
-
-					c.socket.Close()
-					c.socket = nil
-
-					if c.config.AutoRetry {
-						log.Printf("Retrying connect in %.2f seconds\n", c.config.ReconnectInterval.Seconds())
-						time.Sleep(c.config.ReconnectInterval)
-						continue
-					} else {
-						return err
-					}
-				}
-			}
-
 			return c.onSocketConnection()
 		}
 
@@ -225,6 +207,10 @@ func (c *Conn) onSocketConnection() error {
 	err := c.handshake()
 	if err != nil {
 		return err
+	}
+
+	if len(c.config.ExtraTheirTags) > 0 {
+		c.Call("$mmd", map[string]interface{}{"extraTheirTags": c.config.ExtraTheirTags})
 	}
 
 	if c.config.OnConnect != nil {

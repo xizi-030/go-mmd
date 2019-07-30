@@ -253,7 +253,7 @@ func (c *Conn) registerServiceUtil(name string, fn ServiceFunc, registryAction s
 	ok, err := c.Call("serviceregistry", map[string]interface{}{
 		"action": registryAction,
 		"name":   name,
-		"tag":    findExtraTags("MMD_EXTRA_MY_TAGS"),
+		"tag":    c.config.ExtraMyTags,
 	})
 	if err == nil && ok != "ok" {
 		err = fmt.Errorf("Unexpected return: %v", ok)

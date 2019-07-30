@@ -65,7 +65,7 @@ func findExtraTags(envVar string) []string {
 	} else {
 		extraTags := make([]string, 0)
 		for _, tag := range strings.Split(extraTagsEnv, ",") {
-			extraTags = append(extraTags, tag)
+			extraTags = append(extraTags, strings.TrimSpace(tag))
 		}
 		return extraTags
 	}

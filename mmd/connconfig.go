@@ -38,20 +38,6 @@ func NewConnConfig(url string) *ConnConfig {
 	}
 }
 
-func NewConnConfigWithTags(url string, myTags []string, theirTags []string) *ConnConfig {
-	return &ConnConfig{
-		Url:               url,
-		ReadSz:            64 * 1024,
-		WriteSz:           64 * 1024,
-		AppName:           fmt.Sprintf("Go:%s", filepath.Base(os.Args[0])),
-		AutoRetry:         false,
-		ReconnectInterval: reconnectInterval,
-		ReconnectDelay:    reconnectDelay,
-		ExtraMyTags:       myTags,
-		ExtraTheirTags:    theirTags,
-	}
-}
-
 func (c *ConnConfig) Connect() (*Conn, error) {
 	return _create_connection(c)
 }

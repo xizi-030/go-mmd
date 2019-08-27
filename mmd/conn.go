@@ -15,7 +15,6 @@ type OnConnection func(*Conn) error
 // Conn Connection and channel dispatch map
 type Conn struct {
 	socket       *net.TCPConn
-	writeChan    chan []byte
 	dispatch     map[ChannelId]chan ChannelMsg
 	dispatchLock sync.RWMutex
 	socketLock   sync.Mutex
@@ -202,7 +201,6 @@ func (c *Conn) createSocketConnection(isRetryConnection bool) error {
 }
 
 func (c *Conn) onSocketConnection() error {
-	c.writeChan = make(chan []byte)
 	c.startReader()
 	err := c.handshake()
 	if err != nil {

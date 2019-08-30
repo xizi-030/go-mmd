@@ -117,6 +117,13 @@ func ConnectTo(url string) (*Conn, error) {
 	return NewConnConfig(url).Connect()
 }
 
+func ConnectWithTags(url string, myTags []string, theirTags []string) (*Conn, error) {
+	conn := NewConnConfig(url)
+	conn.ExtraMyTags = myTags
+	conn.ExtraTheirTags = theirTags
+	return conn.Connect()
+}
+
 func ConnectWithRetry(url string, reconnectInterval time.Duration, onConnect OnConnection) (*Conn, error) {
 	cfg := NewConnConfig(url)
 	cfg.ReconnectInterval = reconnectInterval

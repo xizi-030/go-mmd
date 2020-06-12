@@ -113,6 +113,10 @@ func LocalConnect() (*Conn, error) {
 	return ConnectTo("localhost:9999")
 }
 
+func ConnectWithTagsWithRetry()  {
+
+}
+
 func ConnectTo(url string) (*Conn, error) {
 	return NewConnConfig(url).Connect()
 }

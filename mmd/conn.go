@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+const DefaultRetryInterval = 5*time.Second
+const LocalhostUrl = "localhost:9999"
+
 type OnConnection func(*Conn) error
 
 // Conn Connection and channel dispatch map
@@ -110,7 +113,7 @@ func Connect() (*Conn, error) {
 }
 
 func LocalConnect() (*Conn, error) {
-	return ConnectTo("localhost:9999")
+	return ConnectTo(LocalhostUrl)
 }
 
 func ConnectTo(url string) (*Conn, error) {
@@ -126,6 +129,16 @@ func ConnectWithTags(url string, myTags []string, theirTags []string) (*Conn, er
 
 func ConnectWithRetry(url string, reconnectInterval time.Duration, onConnect OnConnection) (*Conn, error) {
 	cfg := NewConnConfig(url)
+	cfg.ReconnectInterval = reconnectInterval
+	cfg.AutoRetry = true
+	cfg.OnConnect = onConnect
+	return cfg.Connect()
+}
+
+func ConnectWithTagsWithRetry(url string, myTags []string, theirTags []string, reconnectInterval time.Duration, onConnect OnConnection) (*Conn, error) {
+	cfg := NewConnConfig(url)
+	cfg.ExtraMyTags = myTags
+	cfg.ExtraTheirTags = theirTags
 	cfg.ReconnectInterval = reconnectInterval
 	cfg.AutoRetry = true
 	cfg.OnConnect = onConnect

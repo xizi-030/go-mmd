@@ -158,6 +158,7 @@ func (c *Conn) cleanupReader() {
 	c.dispatchLock.Lock()
 	for k, v := range c.dispatch {
 		log.Println("Auto-closing channel", k)
+		delete(c.dispatch, k)
 		close(v)
 	}
 }

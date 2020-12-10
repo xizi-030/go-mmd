@@ -42,6 +42,16 @@ func (c *Conn) Subscribe(service string, body interface{}) (*Chan, error) {
 	return &Chan{Ch: ch, con: c, Id: cc.ChannelId}, nil
 }
 
+func (c *Conn) Unsubscribe(cid ChannelId) error {
+	ch := c.unregisterChannel(cid)
+	if ch != nil {
+		close(ch)
+		return nil
+	} else {
+		return fmt.Errorf("Failed close channel: %v", cid)
+	}
+}
+
 func (c *Conn) Call(service string, body interface{}) (interface{}, error) {
 	return c.CallAuthenticated(service, AuthToken(NO_AUTH_TOKEN), body)
 }

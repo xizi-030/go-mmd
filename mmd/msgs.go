@@ -20,6 +20,13 @@ func NewChannelCreate(chanType ChannelType, service string, body interface{}) Ch
 	}
 }
 
+func NewChannelClose(id ChannelId, body interface{}) ChannelClose {
+	return ChannelClose{
+		ChannelId: id,
+		Body:      body,
+	}
+}
+
 func GenerateUUID() UUID {
 	return newUUID()
 }
@@ -75,6 +82,11 @@ type ChannelCreate struct {
 	Service   string
 	Timeout   int64
 	AuthToken AuthToken
+	Body      interface{}
+}
+
+type ChannelClose struct {
+	ChannelId ChannelId
 	Body      interface{}
 }
 

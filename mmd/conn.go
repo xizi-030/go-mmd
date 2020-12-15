@@ -27,22 +27,18 @@ type Conn struct {
 }
 
 func (c *Conn) Subscribe(service string, body interface{}) (*Chan, error) {
-	buff := NewBuffer(1024)
-	cc := NewChannelCreate(SubChan, service, body)
-	err := Encode(buff, cc)
-	if err != nil {
-		return nil, err
-	}
 	ch := make(chan ChannelMsg, 1)
+	cc := NewChannelCreate(SubChan, service, body)
 	c.registerChannel(cc.ChannelId, ch)
-	err = c.writeOnSocket(buff.Flip().Bytes())
+
+	err := c.sendChannelMsg(cc)
 	if err != nil {
 		return nil, err
 	}
 	return &Chan{Ch: ch, con: c, Id: cc.ChannelId}, nil
 }
 
-func (c *Conn) Unsubscribe(cid ChannelId) error {
+func (c *Conn) Unsubscribe(cid ChannelId, body interface{}) error {
 	ch := c.unregisterChannel(cid)
 	if ch != nil {
 		close(ch)
@@ -50,6 +46,8 @@ func (c *Conn) Unsubscribe(cid ChannelId) error {
 	} else {
 		return fmt.Errorf("Failed close channel: %v", cid)
 	}
+
+	return c.sendChannelMsg(NewChannelClose(cid, body))
 }
 
 func (c *Conn) Call(service string, body interface{}) (interface{}, error) {
@@ -175,6 +173,16 @@ func (c *Conn) cleanupReader() {
 
 func (c *Conn) cleanupSocket() {
 	c.socket.CloseWrite()
+}
+
+func (c *Conn) sendChannelMsg(cc interface{}) error {
+	buff := NewBuffer(1024)
+	err := Encode(buff, cc)
+	if err != nil {
+		return err
+	}
+
+	return c.writeOnSocket(buff.Flip().Bytes())
 }
 
 func (c *Conn) reconnect() {

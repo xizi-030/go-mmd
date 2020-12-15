@@ -42,7 +42,6 @@ func (c *Conn) Unsubscribe(cid ChannelId, body interface{}) error {
 	ch := c.unregisterChannel(cid)
 	if ch != nil {
 		close(ch)
-		return nil
 	} else {
 		return fmt.Errorf("Failed close channel: %v", cid)
 	}

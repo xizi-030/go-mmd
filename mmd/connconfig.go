@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -22,6 +23,7 @@ type ConnConfig struct {
 	OnConnect         OnConnection
 	ExtraMyTags       []string
 	ExtraTheirTags    []string
+	ConnTimeout       int
 }
 
 func NewConnConfig(url string) *ConnConfig {
@@ -35,19 +37,22 @@ func NewConnConfig(url string) *ConnConfig {
 		ReconnectDelay:    reconnectDelay,
 		ExtraMyTags:       findExtraTags("MMD_EXTRA_MY_TAGS"),
 		ExtraTheirTags:    findExtraTags("MMD_EXTRA_THEIR_TAGS"),
+		ConnTimeout:       -1,
 	}
 }
 
-func (c *ConnConfig) Connect() (*Conn, error) {
+func (c *ConnConfig) Connect() (Conn, error) {
 	return _create_connection(c)
 }
 
-func _create_connection(cfg *ConnConfig) (*Conn, error) {
-	mmdc := &Conn{
-		dispatch:    make(map[ChannelId]chan ChannelMsg, 1024),
-		callTimeout: time.Second * 30,
-		services:    make(map[string]ServiceFunc),
-		config:      cfg,
+var enableIstio, _ = strconv.ParseBool(os.Getenv("ENABLE_ISTIO_CONNECTION"))
+
+func _create_connection(cfg *ConnConfig) (Conn, error) {
+	var mmdc Conn
+	if enableIstio {
+		mmdc = createCompositeConnection(cfg)
+	} else {
+		mmdc = createConnection(cfg)
 	}
 
 	err := mmdc.createSocketConnection(false)
@@ -56,6 +61,23 @@ func _create_connection(cfg *ConnConfig) (*Conn, error) {
 	}
 
 	return mmdc, err
+}
+
+func createCompositeConnection(cfg *ConnConfig) *CompositeConn {
+	return &CompositeConn{
+		conns: make(map[string]*ConnImpl),
+		mmdConn: createConnection(cfg),
+		cfg:   cfg,
+	}
+}
+
+func createConnection(cfg *ConnConfig) *ConnImpl {
+	return &ConnImpl{
+		dispatch:    make(map[ChannelId]chan ChannelMsg, 1024),
+		callTimeout: time.Second * 30,
+		services:    make(map[string]ServiceFunc),
+		config:      cfg,
+	}
 }
 
 func findExtraTags(envVar string) []string {

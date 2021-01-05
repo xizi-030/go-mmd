@@ -6,12 +6,12 @@ import (
 )
 
 // ServiceFunc Handler callback for registered services
-type ServiceFunc func(*Conn, *Chan, *ChannelCreate)
+type ServiceFunc func(*ConnImpl, *Chan, *ChannelCreate)
 
 // Chan MMD Channel
 type Chan struct {
 	Ch  chan ChannelMsg
-	con *Conn
+	con *ConnImpl
 	Id  ChannelId
 }
 

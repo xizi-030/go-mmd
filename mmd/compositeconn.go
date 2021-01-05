@@ -110,7 +110,7 @@ func (c *CompositeConn) getOrCreateConnection(service string) (*ConnImpl, error)
 		if err != nil {
 			return nil, err
 		}
-		log.Println("Access method for " + service + ": " + strconv.Itoa(int(accessMethod)))
+		log.Printf("Access method for %s: %d", service, accessMethod)
 
 		return c.createConnection(service, accessMethod)
 	}
@@ -284,17 +284,17 @@ func (c *CompositeConn) getAccessMethod(service string) (mmdAccessMethod, error)
 
 	serviceDiscoveryServiceConn, err := c.getOrCreateConnection(serviceDiscoveryServiceName)
 	if err != nil {
-		return -1, err
+		return ERROR, err
 	}
 
 	resp, err := serviceDiscoveryServiceConn.Call(serviceDiscoveryServiceName, map[string]interface{}{"service": service})
 	if err != nil {
-		return -1, err
+		return ERROR, err
 	}
 
 	respMap, ok := resp.(map[interface{}]interface{})
 	if !ok {
-		return -1, fmt.Errorf("service discovery service response was not a map: %s", reflect.TypeOf(resp))
+		return ERROR, fmt.Errorf("service discovery service response was not a map: %s", reflect.TypeOf(resp))
 	}
 	serviceType := respMap[service]
 

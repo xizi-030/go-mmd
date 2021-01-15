@@ -19,6 +19,7 @@ type CompositeConn struct {
 	cfg         *ConnConfig
 	mu          sync.RWMutex
 	callTimeout time.Duration
+	servers     []*Server
 }
 
 func (c *CompositeConn) Subscribe(service string, body interface{}) (*Chan, error) {
@@ -70,12 +71,65 @@ func (c *CompositeConn) GetDefaultCallTimeout() time.Duration {
 	return c.callTimeout
 }
 
+var isIstioService, _ = strconv.ParseBool(os.Getenv("IS_ISTIO_SERVICE"))
+
 func (c *CompositeConn) RegisterLocalService(name string, fn ServiceFunc) error {
-	return c.mmdConn.RegisterLocalService(name, fn)
+	if isIstioService {
+		log.Println("Registering direct mmd service " + name)
+		return c.registerDirectService(name, fn)
+	} else {
+		log.Println("Registering brokered mmd service" + name)
+		return c.mmdConn.RegisterLocalService(name, fn)
+	}
 }
 
 func (c *CompositeConn) RegisterService(name string, fn ServiceFunc) error {
-	return c.mmdConn.RegisterService(name, fn)
+	if isIstioService {
+		log.Println("Registering direct mmd service" + name)
+		return c.registerDirectService(name, fn)
+	} else {
+		log.Println("Registering brokered mmd service" + name)
+		return c.mmdConn.RegisterService(name, fn)
+	}
+}
+
+
+func (c *CompositeConn) registerDirectService(service string, fn ServiceFunc) error {
+	re := regexp.MustCompile("[.\\\\-]")
+	listenPortEnvVar := re.ReplaceAllString(strings.ToUpper(service), "_") + "_LISTEN_PORT"
+	envVal, ok := os.LookupEnv(listenPortEnvVar)
+	if !ok {
+		return fmt.Errorf("listen port for service %s is not configured - must set %s", service, listenPortEnvVar)
+	}
+	listenPort, err := strconv.Atoi(envVal)
+	if err != nil {
+		return fmt.Errorf("invalid listen port for service %s: %s. Error: %v", service, envVal, err)
+	}
+
+	log.Printf("%s is configured to listen on port %d", service, listenPort)
+
+	server := &Server{
+		serviceName: service,
+		listenPort:  listenPort,
+		cfg:         c.cfg,
+		serviceFunc: fn,
+		closeChan:   make(chan bool),
+	}
+
+
+	started := make(chan error)
+	go server.start(started)
+	err = <-started
+
+	if err != nil {
+		return err
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.servers = append(c.servers, server)
+
+	return nil
 }
 
 func (c *CompositeConn) createSocketConnection(isRetryConnection bool) error {
@@ -83,6 +137,9 @@ func (c *CompositeConn) createSocketConnection(isRetryConnection bool) error {
 }
 
 func (c *CompositeConn) close() (err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	for _, conn := range c.conns {
 		err = conn.close()
 		if err != nil {
@@ -95,6 +152,13 @@ func (c *CompositeConn) close() (err error) {
 		log.Println("Error closing mmd connection", err)
 	}
 
+	for _, server := range c.servers {
+		err = server.stop()
+		if err != nil {
+			log.Println("Error stopping mmd server", err)
+		}
+	}
+
 	return
 }
 
@@ -102,6 +166,7 @@ func (c *CompositeConn) getOrCreateConnection(service string) (*ConnImpl, error)
 	log.Println("get or create connection " + service)
 
 	if conn := c.getConnection(service); conn != nil {
+		log.Println("Found existing connection for " + service)
 		return conn, nil
 	} else {
 		log.Println("No existing connection found for " + service + ". Creating one")

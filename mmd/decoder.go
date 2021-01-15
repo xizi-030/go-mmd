@@ -39,6 +39,7 @@ func init() { // this init() is here due to compiler bug(?) on init loop
 		0x18: decodeFastUInt,
 		'S':  varString,
 		's':  fastString,
+		'c':  decodeFastCreate,
 		'C':  decodeVarIntCreate,
 		'X':  decodeClose,
 		'M':  decodeMessage,
@@ -68,6 +69,45 @@ func init() { // this init() is here due to compiler bug(?) on init loop
 		'#': decodeVarintTime,
 		'z': decodeFastTime,
 	}
+}
+
+func decodeFastCreate(tag byte, buff *Buffer) (interface{}, error) {
+	chanID, err := decodeChanID(buff)
+	if err != nil {
+		return nil, err
+	}
+	chanType, err := decodeChannelType(buff)
+	if err != nil {
+		return nil, err
+	}
+	service, err := readVarString(buff)
+	if err != nil {
+		return nil, err
+	}
+	timeout, err := decodeFastTimeout(buff)
+	if err != nil {
+		return nil, err
+	}
+	authToken, err := decodeAuthToken(buff)
+	if err != nil {
+		return nil, err
+	}
+	body, err := Decode(buff)
+	if err != nil {
+		return nil, err
+	}
+	return ChannelCreate{
+		ChannelId: ChannelId(chanID),
+		Type:      chanType,
+		Service:   service,
+		Timeout:   int64(timeout),
+		AuthToken: AuthToken(authToken),
+		Body:      body,
+	}, nil
+}
+
+func decodeFastTimeout(buff *Buffer) (int, error){
+	return fastInt(2, buff)
 }
 
 func decodeVarIntCreate(tag byte, buff *Buffer) (interface{}, error) {

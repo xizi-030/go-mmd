@@ -184,7 +184,7 @@ func ConnectWithTagsWithRetryTo(url string, myTags []string, theirTags []string,
 // internal to package --
 
 func (c *ConnImpl) startReader() {
-	go reader(c)
+	go c.reader()
 }
 
 func (c *ConnImpl) cleanupReader() {
@@ -274,12 +274,20 @@ func (c *ConnImpl) createSocketConnection(isRetryConnection bool) error {
 }
 
 func (c *ConnImpl) onSocketConnection() error {
-	c.startReader()
-
-	err := c.handshake()
-	if err != nil {
-		return err
+	//either write or read the handshake
+	if c.config.WriteHandshake {
+		err := c.handshake()
+		if err != nil {
+			return err
+		}
+	} else {
+		err, _ := c.readSingleFrame()
+		if err != nil {
+			return err
+		}
 	}
+
+	c.startReader()
 
 	if len(c.config.ExtraTheirTags) > 0 {
 		c.Call("$mmd", map[string]interface{}{"extraTheirTags": c.config.ExtraTheirTags})
@@ -365,72 +373,88 @@ func (c *ConnImpl) writeOnSocket(data []byte) error {
 	return nil
 }
 
-func reader(c *ConnImpl) {
+func(c *ConnImpl) reader() {
 	fszb := make([]byte, 4)
 	buff := make([]byte, 256)
 	defer c.onDisconnect()
 	for {
-		num, err := io.ReadFull(c.socket, fszb)
+		err, b := c.readFrame(fszb, buff)
 		if err != nil {
-			if err == io.EOF {
-				return
-			}
-			log.Println("Error reading frame size:", err)
 			return
 		}
-		if num != 4 {
-			log.Println("Short read for size:", num)
-			return
-		}
-		fsz := int(binary.BigEndian.Uint32(fszb))
-		if len(buff) < fsz {
-			buff = make([]byte, fsz)
-		}
-
-		reads := 0
-		offset := 0
-		for offset < fsz {
-			sz, err := c.socket.Read(buff[offset:fsz])
-			if err != nil {
-				log.Panic("Error reading message:", err)
-				return
-			}
-			reads++
-			offset += sz
-		}
-		m, err := Decode(Wrap(buff[:fsz]))
+		m, err := Decode(b)
 		if err != nil {
 			log.Panic("Error decoding buffer:", err)
 		} else {
-			switch msg := m.(type) {
-			case ChannelMsg:
-				if msg.IsClose {
-					ch := c.unregisterChannel(msg.Channel)
-					if ch != nil {
-						ch <- msg
-						close(ch)
-					} else {
-						log.Println("Unknown channel:", msg.Channel, "discarding message")
-					}
-				} else {
-					ch := c.lookupChannel(msg.Channel)
-					if ch != nil {
-						ch <- msg
-					} else {
-						log.Println("Unknown channel:", msg.Channel, "discarding message")
-					}
-				}
-			case ChannelCreate:
-				fn, ok := c.services[msg.Service]
-				if !ok {
-					log.Println("Unknown service:", msg.Service, "cannot process", msg)
-				}
-				ch := make(chan ChannelMsg, 1)
-				c.registerChannel(msg.ChannelId, ch)
-				fn(c, &Chan{Ch: ch, con: c, Id: msg.ChannelId}, &msg)
-			default:
-				log.Panic("Unknown message type:", reflect.TypeOf(msg), msg)
+			c.dispatchMessage(m)
+		}
+	}
+}
+
+func (c *ConnImpl) readSingleFrame() (error, *Buffer) {
+	buf := make([]byte, 1024)
+	fszbf := make([]byte, 4)
+	return c.readFrame(fszbf, buf)
+}
+
+func (c *ConnImpl) readFrame(fszb []byte, buff []byte) (error, *Buffer) {
+	num, err := io.ReadFull(c.socket, fszb)
+	if err != nil {
+		if err != io.EOF {
+			log.Println("Error reading frame size:", err)
+		}
+		return err, nil
+	}
+	if num != 4 {
+		log.Println("Short read for size:", num)
+		return fmt.Errorf("Short read for size: %d", num), nil
+	}
+	fsz := int(binary.BigEndian.Uint32(fszb))
+	if len(buff) < fsz {
+		buff = make([]byte, fsz)
+	}
+
+	reads := 0
+	offset := 0
+	for offset < fsz {
+		sz, err := c.socket.Read(buff[offset:fsz])
+		if err != nil {
+			log.Panic("Error reading message:", err)
+		}
+		reads++
+		offset += sz
+	}
+	return nil, Wrap(buff[:fsz])
+}
+
+func (c *ConnImpl) dispatchMessage(m interface{}) {
+	switch msg := m.(type) {
+	case ChannelMsg:
+		if msg.IsClose {
+			ch := c.unregisterChannel(msg.Channel)
+			if ch != nil {
+				ch <- msg
+				close(ch)
+			} else {
+				log.Println("Unknown channel:", msg.Channel, "discarding message")
+			}
+		} else {
+			ch := c.lookupChannel(msg.Channel)
+			if ch != nil {
+				ch <- msg
+			} else {
+				log.Println("Unknown channel:", msg.Channel, "discarding message")
 			}
 		}
+	case ChannelCreate:
+		fn, ok := c.services[msg.Service]
+		if !ok {
+			log.Println("Unknown service:", msg.Service, "cannot process", msg)
+		}
+		ch := make(chan ChannelMsg, 1)
+		c.registerChannel(msg.ChannelId, ch)
+		fn(c, &Chan{Ch: ch, con: c, Id: msg.ChannelId}, &msg)
+	default:
+		log.Panic("Unknown message type:", reflect.TypeOf(msg), msg)
 	}
 }

@@ -24,6 +24,7 @@ type ConnConfig struct {
 	ExtraMyTags       []string
 	ExtraTheirTags    []string
 	ConnTimeout       int
+	WriteHandshake    bool
 }
 
 func NewConnConfig(url string) *ConnConfig {
@@ -38,6 +39,7 @@ func NewConnConfig(url string) *ConnConfig {
 		ExtraMyTags:       findExtraTags("MMD_EXTRA_MY_TAGS"),
 		ExtraTheirTags:    findExtraTags("MMD_EXTRA_THEIR_TAGS"),
 		ConnTimeout:       -1,
+		WriteHandshake:    true,
 	}
 }
 
@@ -65,9 +67,10 @@ func _create_connection(cfg *ConnConfig) (Conn, error) {
 
 func createCompositeConnection(cfg *ConnConfig) *CompositeConn {
 	return &CompositeConn{
-		conns: make(map[string]*ConnImpl),
+		conns:   make(map[string]*ConnImpl),
 		mmdConn: createConnection(cfg),
-		cfg:   cfg,
+		cfg:     cfg,
+		servers: make([]*Server, 0),
 	}
 }
 

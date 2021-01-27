@@ -227,7 +227,8 @@ func (c *CompositeConn) createAndInitDirectConnection(service string) (*ConnImpl
 	newConfig.Url = newUrl
 
 	newConfig.ConnTimeout = DIRECT_CONNECTION_TIMEOUT_SECONDS
-
+	newConfig.OnConnect = nil
+	
 	conn := createConnection(&newConfig)
 
 	err = conn.createSocketConnection(false)

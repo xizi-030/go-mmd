@@ -66,12 +66,17 @@ func _create_connection(cfg *ConnConfig) (Conn, error) {
 }
 
 func createCompositeConnection(cfg *ConnConfig) *CompositeConn {
-	return &CompositeConn{
+	compositeCfg := *cfg
+	result := &CompositeConn{
 		conns:   make(map[string]*ConnImpl),
-		mmdConn: createConnection(cfg),
-		cfg:     cfg,
+		mmdConn: createConnection(&compositeCfg),
+		cfg:     &compositeCfg,
 		servers: make([]*Server, 0),
 	}
+	compositeCfg.OnConnect = func(Conn) error {
+		return cfg.OnConnect(result)
+	}
+	return result
 }
 
 func createConnection(cfg *ConnConfig) *ConnImpl {

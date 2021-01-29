@@ -250,18 +250,15 @@ func (c *ConnImpl) createSocketConnection(isRetryConnection bool) error {
 
 	for {
 		conn, err := dialer.Dial("tcp", c.config.Url)
-		if err != nil {
-			return  err
-		}
-		tcpConn := conn.(*net.TCPConn)
-
 		if err != nil && c.config.AutoRetry {
 			log.Printf("Failed to connect, will sleep for %.2f seconds before trying again : %v\n", c.config.ReconnectInterval.Seconds(), err)
 			time.Sleep(c.config.ReconnectInterval)
 			continue
 		}
-
+		
 		if err == nil {
+			tcpConn := conn.(*net.TCPConn)
+
 			tcpConn.SetWriteBuffer(c.config.WriteSz)
 			tcpConn.SetReadBuffer(c.config.ReadSz)
 			c.socket = tcpConn

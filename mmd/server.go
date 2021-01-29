@@ -76,6 +76,7 @@ func (s *Server) handleConnection(tcpConn *net.TCPConn) (err error) {
 func createServerSideConnCfg(clientConfig *ConnConfig) *ConnConfig {
 	newCfg := *clientConfig
 	newCfg.WriteHandshake = false
+	newCfg.OnConnect = nil
 	return &newCfg
 }
 

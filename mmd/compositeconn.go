@@ -227,7 +227,8 @@ func (c *CompositeConn) createAndInitDirectConnection(service string) (*ConnImpl
 	newConfig.Url = newUrl
 
 	newConfig.ConnTimeout = DIRECT_CONNECTION_TIMEOUT_SECONDS
-
+	newConfig.OnConnect = nil
+	
 	conn := createConnection(&newConfig)
 
 	err = conn.createSocketConnection(false)
@@ -241,7 +242,7 @@ func (c *CompositeConn) createAndInitDirectConnection(service string) (*ConnImpl
 var env = computeEnv()
 var nameserverUrl = env + ".k8s.peak6.net:53"
 var istioIngressUrl = env + ".istioingress.peak6.net"
-var isInK8s, _ = strconv.ParseBool(os.Getenv("KUBERNETES_SERVICE_HOST"))
+var _, isInK8s = os.LookupEnv("KUBERNETES_SERVICE_HOST")
 
 var envs = map[byte]string{'d': "dev", 's': "stg", 'u': "uat", 'p': "prd"}
 

@@ -73,8 +73,10 @@ func createCompositeConnection(cfg *ConnConfig) *CompositeConn {
 		cfg:     &compositeCfg,
 		servers: make([]*Server, 0),
 	}
-	compositeCfg.OnConnect = func(Conn) error {
-		return cfg.OnConnect(result)
+	if (cfg.OnConnect != nil) {
+		compositeCfg.OnConnect = func(Conn) error {
+			return cfg.OnConnect(result)
+		}
 	}
 	return result
 }

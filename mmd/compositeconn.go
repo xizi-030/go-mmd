@@ -297,9 +297,9 @@ func getServiceUrl(service string) (string, error) {
 
 	var host string
 	if isInK8s {
-		log.Println("In k8s, using resolved cname as host: " + cname)
+		log.Println("In k8s, using resolved address as host: " + cname)
 
-		host = cname
+		host = addrs[0].Target
 	} else {
 		log.Println("Not k8s, using istio ingress as host: " + istioIngressUrl)
 

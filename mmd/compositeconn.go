@@ -240,9 +240,16 @@ func (c *CompositeConn) createAndInitDirectConnection(service string) (*ConnImpl
 }
 
 var env = computeEnv()
-var nameserverUrl = env + ".k8s.peak6.net:53"
-var istioIngressUrl = env + ".istioingress.peak6.net"
-var _, isInK8s = os.LookupEnv("KUBERNETES_SERVICE_HOST")
+var nameserverHost = getEnv("NAMESERVER_HOST", env + ".k8s.peak6.net")
+var istioIngressHost = getEnv("ISTIO_INGRESS_HOST", env + ".istioingress.peak6.net")
+var useIstioIngress, _ = strconv.ParseBool(os.Getenv("USE_ISTIO_INGRESS"))
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
 
 var envs = map[byte]string{'d': "dev", 's': "stg", 'u': "uat", 'p': "prd"}
 
@@ -276,34 +283,35 @@ func getServiceUrl(service string) (string, error) {
 	k8sFqdn := k8sServiceName + ".default.svc.cluster.local"
 
 	var resolver *net.Resolver
-	if !isInK8s {
-		log.Println("Not in k8s, using custom resolver with " + nameserverUrl)
+	if useIstioIngress {
+		log.Println("Using istio ingress, using custom resolver with configured nameserver " + nameserverHost)
 
 		resolver = &net.Resolver{
 			PreferGo: true,
 			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
 				d := net.Dialer{Timeout: time.Millisecond * time.Duration(10000)}
-				return d.DialContext(ctx, network, nameserverUrl)
+				return d.DialContext(ctx, network, nameserverHost + ":53")
 			},
 		}
 	} else {
 		resolver = net.DefaultResolver
 	}
 
-	cname, addrs, err := resolver.LookupSRV(context.Background(), "tcp-mmd", "tcp", k8sFqdn)
+	_, addrs, err := resolver.LookupSRV(context.Background(), "tcp-mmd", "tcp", k8sFqdn)
 	if err != nil {
 		return "", err
 	}
 
 	var host string
-	if isInK8s {
-		log.Println("In k8s, using resolved address as host: " + cname)
+	if !useIstioIngress {
+		host = addrs[0].Target
+		log.Println("USE_ISTIO_INGRESS=false, using resolved address as host: " + host)
 
 		host = addrs[0].Target
 	} else {
-		log.Println("Not k8s, using istio ingress as host: " + istioIngressUrl)
+		log.Println("USE_ISTIO_INGRESS=true, Using istio ingress as host: " + istioIngressHost)
 
-		host = istioIngressUrl
+		host = istioIngressHost
 	}
 
 	port := addrs[0].Port

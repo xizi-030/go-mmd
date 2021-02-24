@@ -228,7 +228,7 @@ func (c *CompositeConn) createAndInitDirectConnection(service string) (*ConnImpl
 
 	newConfig.ConnTimeout = DIRECT_CONNECTION_TIMEOUT_SECONDS
 	newConfig.OnConnect = nil
-	
+
 	conn := createConnection(&newConfig)
 
 	err = conn.createSocketConnection(false)
@@ -242,11 +242,20 @@ func (c *CompositeConn) createAndInitDirectConnection(service string) (*ConnImpl
 var env = computeEnv()
 var nameserverHost = getEnv("NAMESERVER_HOST", env + ".k8s.peak6.net")
 var istioIngressHost = getEnv("ISTIO_INGRESS_HOST", env + ".istioingress.peak6.net")
-var useIstioIngress, _ = strconv.ParseBool(os.Getenv("USE_ISTIO_INGRESS"))
+var _, isInK8s = os.LookupEnv("KUBERNETES_SERVICE_HOST")
+var useIstioIngress = getEnvBool("USE_ISTIO_INGRESS", !isInK8s)
 
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
+	}
+	return fallback
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	if value, ok := os.LookupEnv(key); ok {
+		var result, _ = strconv.ParseBool(value)
+		return result
 	}
 	return fallback
 }
@@ -284,7 +293,7 @@ func getServiceUrl(service string) (string, error) {
 
 	var resolver *net.Resolver
 	if useIstioIngress {
-		log.Println("Using istio ingress, using custom resolver with configured nameserver " + nameserverHost)
+		log.Println("Using istio ingress, using custom resolver with configured nameserver " + nameserverHost + " for DNS SRV lookup")
 
 		resolver = &net.Resolver{
 			PreferGo: true,
@@ -294,6 +303,8 @@ func getServiceUrl(service string) (string, error) {
 			},
 		}
 	} else {
+		log.Println("Not using istio ingress - using default reachable nameserver for DNS SRV lookup")
+
 		resolver = net.DefaultResolver
 	}
 
@@ -305,11 +316,11 @@ func getServiceUrl(service string) (string, error) {
 	var host string
 	if !useIstioIngress {
 		host = addrs[0].Target
-		log.Println("USE_ISTIO_INGRESS=false, using resolved address as host: " + host)
+		log.Println("Not using istio ingress, using resolved address as host: " + host)
 
 		host = addrs[0].Target
 	} else {
-		log.Println("USE_ISTIO_INGRESS=true, Using istio ingress as host: " + istioIngressHost)
+		log.Println("Using istio ingress as host: " + istioIngressHost)
 
 		host = istioIngressHost
 	}

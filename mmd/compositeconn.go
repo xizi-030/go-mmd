@@ -245,21 +245,6 @@ var istioIngressHost = getEnv("ISTIO_INGRESS_HOST", env + ".istioingress.peak6.n
 var _, isInK8s = os.LookupEnv("KUBERNETES_SERVICE_HOST")
 var useIstioIngress = getEnvBool("USE_ISTIO_INGRESS", !isInK8s)
 
-func getEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
-}
-
-func getEnvBool(key string, fallback bool) bool {
-	if value, ok := os.LookupEnv(key); ok {
-		var result, _ = strconv.ParseBool(value)
-		return result
-	}
-	return fallback
-}
-
 var envs = map[byte]string{'d': "dev", 's': "stg", 'u': "uat", 'p': "prd"}
 
 func computeEnv() string {
@@ -342,7 +327,7 @@ const (
 
 const serviceDiscoveryServiceName = "mmd.istio.service.discovery"
 
-var preferMmd, _ = strconv.ParseBool(os.Getenv("PREFER_MMD_CONNECTION"))
+var preferMmd = getEnvBool(os.Getenv("PREFER_MMD_CONNECTION"), false)
 
 func (c *CompositeConn) getAccessMethod(service string) (mmdAccessMethod, error) {
 	log.Println("Looking up service type for service " + service)

@@ -47,7 +47,7 @@ func (c *ConnConfig) Connect() (Conn, error) {
 	return _create_connection(c)
 }
 
-var enableIstio, _ = strconv.ParseBool(os.Getenv("ENABLE_ISTIO_CONNECTION"))
+var enableIstio = getEnvBool("ENABLE_ISTIO_CONNECTION", false)
 
 func _create_connection(cfg *ConnConfig) (Conn, error) {
 	var mmdc Conn

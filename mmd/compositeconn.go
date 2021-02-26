@@ -228,7 +228,7 @@ func (c *CompositeConn) createAndInitDirectConnection(service string) (*ConnImpl
 
 	newConfig.ConnTimeout = DIRECT_CONNECTION_TIMEOUT_SECONDS
 	newConfig.OnConnect = nil
-	
+
 	conn := createConnection(&newConfig)
 
 	err = conn.createSocketConnection(false)
@@ -240,9 +240,10 @@ func (c *CompositeConn) createAndInitDirectConnection(service string) (*ConnImpl
 }
 
 var env = computeEnv()
-var nameserverUrl = env + ".k8s.peak6.net:53"
-var istioIngressUrl = env + ".istioingress.peak6.net"
+var nameserverHost = getEnv("NAMESERVER_HOST", env + ".k8s.peak6.net")
+var istioIngressHost = getEnv("ISTIO_INGRESS_HOST", env + ".istioingress.peak6.net")
 var _, isInK8s = os.LookupEnv("KUBERNETES_SERVICE_HOST")
+var useIstioIngress = getEnvBool("USE_ISTIO_INGRESS", !isInK8s)
 
 var envs = map[byte]string{'d': "dev", 's': "stg", 'u': "uat", 'p': "prd"}
 
@@ -276,34 +277,37 @@ func getServiceUrl(service string) (string, error) {
 	k8sFqdn := k8sServiceName + ".default.svc.cluster.local"
 
 	var resolver *net.Resolver
-	if !isInK8s {
-		log.Println("Not in k8s, using custom resolver with " + nameserverUrl)
+	if useIstioIngress {
+		log.Println("Using istio ingress, using custom resolver with configured nameserver " + nameserverHost + " for DNS SRV lookup")
 
 		resolver = &net.Resolver{
 			PreferGo: true,
 			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
 				d := net.Dialer{Timeout: time.Millisecond * time.Duration(10000)}
-				return d.DialContext(ctx, network, nameserverUrl)
+				return d.DialContext(ctx, network, nameserverHost + ":53")
 			},
 		}
 	} else {
+		log.Println("Not using istio ingress - using default reachable nameserver for DNS SRV lookup")
+
 		resolver = net.DefaultResolver
 	}
 
-	cname, addrs, err := resolver.LookupSRV(context.Background(), "tcp-mmd", "tcp", k8sFqdn)
+	_, addrs, err := resolver.LookupSRV(context.Background(), "tcp-mmd", "tcp", k8sFqdn)
 	if err != nil {
 		return "", err
 	}
 
 	var host string
-	if isInK8s {
-		log.Println("In k8s, using resolved address as host: " + cname)
+	if !useIstioIngress {
+		host = addrs[0].Target
+		log.Println("Not using istio ingress, using resolved address as host: " + host)
 
 		host = addrs[0].Target
 	} else {
-		log.Println("Not k8s, using istio ingress as host: " + istioIngressUrl)
+		log.Println("Using istio ingress as host: " + istioIngressHost)
 
-		host = istioIngressUrl
+		host = istioIngressHost
 	}
 
 	port := addrs[0].Port
@@ -323,7 +327,7 @@ const (
 
 const serviceDiscoveryServiceName = "mmd.istio.service.discovery"
 
-var preferMmd, _ = strconv.ParseBool(os.Getenv("PREFER_MMD_CONNECTION"))
+var preferMmd = getEnvBool(os.Getenv("PREFER_MMD_CONNECTION"), false)
 
 func (c *CompositeConn) getAccessMethod(service string) (mmdAccessMethod, error) {
 	log.Println("Looking up service type for service " + service)

@@ -93,7 +93,6 @@ func (c *CompositeConn) RegisterService(name string, fn ServiceFunc) error {
 	}
 }
 
-
 func (c *CompositeConn) registerDirectService(service string, fn ServiceFunc) error {
 	re := regexp.MustCompile("[.\\\\-]")
 	listenPortEnvVar := re.ReplaceAllString(strings.ToUpper(service), "_") + "_LISTEN_PORT"
@@ -115,7 +114,6 @@ func (c *CompositeConn) registerDirectService(service string, fn ServiceFunc) er
 		serviceFunc: fn,
 		closeChan:   make(chan bool),
 	}
-
 
 	started := make(chan error)
 	go server.start(started)
@@ -188,7 +186,7 @@ func (c *CompositeConn) getConnection(service string) *ConnImpl {
 	return c.conns[service]
 }
 
-func (c *CompositeConn) createConnection(service string, serviceType mmdAccessMethod) (*ConnImpl, error){
+func (c *CompositeConn) createConnection(service string, serviceType mmdAccessMethod) (*ConnImpl, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -240,8 +238,8 @@ func (c *CompositeConn) createAndInitDirectConnection(service string) (*ConnImpl
 }
 
 var env = computeEnv()
-var nameserverHost = getEnv("NAMESERVER_HOST", env + ".k8s.peak6.net")
-var istioIngressHost = getEnv("ISTIO_INGRESS_HOST", env + ".istioingress.peak6.net")
+var nameserverHost = getEnv("NAMESERVER_HOST", env+".k8s.peak6.net")
+var istioIngressHost = getEnv("ISTIO_INGRESS_HOST", env+".istioingress.peak6.net")
 var _, isInK8s = os.LookupEnv("KUBERNETES_SERVICE_HOST")
 var useIstioIngress = getEnvBool("USE_ISTIO_INGRESS", !isInK8s)
 
@@ -284,7 +282,7 @@ func getServiceUrl(service string) (string, error) {
 			PreferGo: true,
 			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
 				d := net.Dialer{Timeout: time.Millisecond * time.Duration(10000)}
-				return d.DialContext(ctx, network, nameserverHost + ":53")
+				return d.DialContext(ctx, network, nameserverHost+":53")
 			},
 		}
 	} else {
@@ -320,14 +318,14 @@ func getServiceUrl(service string) (string, error) {
 type mmdAccessMethod int
 
 const (
-	MMD   mmdAccessMethod = iota
+	MMD mmdAccessMethod = iota
 	ISTIO
 	ERROR
 )
 
 const serviceDiscoveryServiceName = "mmd.istio.service.discovery"
 
-var preferMmd = getEnvBool(os.Getenv("PREFER_MMD_CONNECTION"), false)
+var preferMmd = getEnvBool("PREFER_MMD_CONNECTION", false)
 
 func (c *CompositeConn) getAccessMethod(service string) (mmdAccessMethod, error) {
 	log.Println("Looking up service type for service " + service)

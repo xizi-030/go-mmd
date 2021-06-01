@@ -2,12 +2,10 @@ package mmd
 
 import (
 	"flag"
-	logpkg "log"
 	"os"
 	"strconv"
 )
 
-var log = logpkg.New(os.Stdout, "[mmd] ", logpkg.LstdFlags|logpkg.Lmicroseconds)
 var mmdUrl = "localhost:9999"
 
 func init() {

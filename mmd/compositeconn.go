@@ -198,6 +198,12 @@ func (c *CompositeConn) createConnection(service string, serviceType mmdAccessMe
 	var conn *ConnImpl
 	switch serviceType {
 	case MMD:
+		if c.mmdConn.socket == nil {
+			err := c.mmdConn.createSocketConnection(false)
+			if err != nil {
+				return nil, err
+			}
+		}
 		conn = c.mmdConn
 	case ISTIO:
 		var err error

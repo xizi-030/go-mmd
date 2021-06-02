@@ -49,13 +49,10 @@ func (c *ConnConfig) Connect() (Conn, error) {
 var enableIstio = getEnvBool("ENABLE_ISTIO_CONNECTION", false)
 
 func _create_connection(cfg *ConnConfig) (Conn, error) {
-	var mmdc Conn
 	if enableIstio {
-		mmdc = createCompositeConnection(cfg)
-	} else {
-		mmdc = createConnection(cfg)
+		return createCompositeConnection(cfg), nil
 	}
-
+	mmdc := createConnection(cfg)
 	err := mmdc.createSocketConnection(false)
 	if err != nil {
 		return nil, err

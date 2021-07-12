@@ -11,9 +11,8 @@ import (
 	"time"
 )
 
-const DefaultRetryInterval = 5*time.Second
+const DefaultRetryInterval = 5 * time.Second
 const LocalhostUrl = "localhost:9999"
-
 
 type OnConnection func(Conn) error
 
@@ -243,9 +242,8 @@ func (c *ConnImpl) createSocketConnection(isRetryConnection bool) error {
 		time.Sleep(c.config.ReconnectDelay)
 	}
 
-
 	dialer := net.Dialer{}
-	if (c.config.ConnTimeout > 0) {
+	if c.config.ConnTimeout > 0 {
 		dialer.Timeout = time.Second * time.Duration(c.config.ConnTimeout)
 	}
 
@@ -256,7 +254,7 @@ func (c *ConnImpl) createSocketConnection(isRetryConnection bool) error {
 			time.Sleep(c.config.ReconnectInterval)
 			continue
 		}
-		
+
 		if err == nil {
 			tcpConn := conn.(*net.TCPConn)
 
@@ -371,10 +369,14 @@ func (c *ConnImpl) writeOnSocket(data []byte) error {
 	return nil
 }
 
-func(c *ConnImpl) reader() {
+func (c *ConnImpl) reader() {
 	fszb := make([]byte, 4)
 	buff := make([]byte, 256)
-	defer c.onDisconnect()
+	defer func() {
+		log.Println("exiting reader loop")
+		c.onDisconnect()
+	}()
+
 	for {
 		err, b := c.readFrame(fszb, buff)
 		if err != nil {
@@ -382,7 +384,12 @@ func(c *ConnImpl) reader() {
 		}
 		m, err := Decode(b)
 		if err != nil {
-			log.Panic("Error decoding buffer:", err)
+			if c.config.AutoRetry == true {
+				log.Println("Error decoding buffer:", err)
+				return
+			} else {
+				log.Panic("Error decoding buffer:", err)
+			}
 		} else {
 			c.dispatchMessage(m)
 		}
@@ -417,7 +424,12 @@ func (c *ConnImpl) readFrame(fszb []byte, buff []byte) (error, *Buffer) {
 	for offset < fsz {
 		sz, err := c.socket.Read(buff[offset:fsz])
 		if err != nil {
-			log.Panic("Error reading message:", err)
+			if c.config.AutoRetry == true {
+				log.Println("Failed to read from socket", err)
+				return fmt.Errorf("failed to read from socket: %v", err.Error()), nil
+			} else {
+				log.Panic("Error reading message:", err)
+			}
 		}
 		reads++
 		offset += sz
@@ -453,6 +465,11 @@ func (c *ConnImpl) dispatchMessage(m interface{}) {
 		c.registerChannel(msg.ChannelId, ch)
 		fn(c, &Chan{Ch: ch, con: c, Id: msg.ChannelId}, &msg)
 	default:
-		log.Panic("Unknown message type:", reflect.TypeOf(msg), msg)
+		if c.config.AutoRetry == true {
+			log.Println("Unknown message type:", reflect.TypeOf(msg), msg)
+		} else {
+			log.Panic("Unknown message type:", reflect.TypeOf(msg), msg)
+		}
+
 	}
 }

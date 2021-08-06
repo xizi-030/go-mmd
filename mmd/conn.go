@@ -274,11 +274,13 @@ func (c *ConnImpl) onSocketConnection() error {
 	if c.config.WriteHandshake {
 		err := c.handshake()
 		if err != nil {
+			log.Printf("error on handshake : %v\n", err)
 			return err
 		}
 	} else {
 		err, _ := c.readSingleFrame()
 		if err != nil {
+			log.Printf("error on readSingleFrame : %v\n",err)
 			return err
 		}
 	}
@@ -290,6 +292,7 @@ func (c *ConnImpl) onSocketConnection() error {
 	}
 
 	if c.config.OnConnect != nil {
+		log.Printf("doing callback")
 		return c.config.OnConnect(c)
 	}
 

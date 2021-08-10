@@ -111,7 +111,6 @@ func (c *CompositeConn) registerDirectService(service string, fn ServiceFunc) er
 	server := &Server{
 		serviceName: service,
 		listenPort:  listenPort,
-		retry:       false,
 		cfg:         c.cfg,
 		serviceFunc: fn,
 		closeChan:   make(chan bool),

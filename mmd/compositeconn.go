@@ -111,6 +111,7 @@ func (c *CompositeConn) registerDirectService(service string, fn ServiceFunc) er
 	server := &Server{
 		serviceName: service,
 		listenPort:  listenPort,
+		retry:     false,
 		cfg:         c.cfg,
 		serviceFunc: fn,
 		closeChan:   make(chan bool),
@@ -230,6 +231,8 @@ func (c *CompositeConn) createAndInitDirectConnection(service string) (*ConnImpl
 	conn := createConnection(&newConfig)
 
 	err = conn.createSocketConnection(false, true)
+	log.Println("after after create")
+
 	if err != nil {
 		return nil, err
 	}

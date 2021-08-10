@@ -10,6 +10,7 @@ import (
 type Server struct {
 	serviceName string
 	listenPort  int
+	retry       bool
 	cfg         *ConnConfig
 	serviceFunc ServiceFunc
 	listener    net.Listener
@@ -71,13 +72,12 @@ func (s *Server) handleConnection(tcpConn *net.TCPConn) (err error) {
 	mmdConn := createConnectionForTcpConn(serverConfig, tcpConn)
 
 	mmdConn.services[s.serviceName] = s.serviceFunc
-	return mmdConn.onSocketConnection(false)
+	return mmdConn.onSocketConnection(s.retry, true)
 }
 
 func createServerSideConnCfg(clientConfig *ConnConfig) *ConnConfig {
 	newCfg := *clientConfig
 	newCfg.WriteHandshake = false
-	newCfg.OnConnect = nil
 	return &newCfg
 }
 
